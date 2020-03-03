@@ -454,6 +454,20 @@ nobase_include_HEADERS = \
 	asio/thread.hpp \
 	asio/thread_pool.hpp \
 	asio/time_traits.hpp \
+	asio/traits/equality_comparable.hpp \
+	asio/traits/execute_free.hpp \
+	asio/traits/execute_member.hpp \
+	asio/traits/prefer_free.hpp \
+	asio/traits/query_free.hpp \
+	asio/traits/query_member.hpp \
+	asio/traits/query_static_constexpr_member.hpp \
+	asio/traits/require_concept_free.hpp \
+	asio/traits/require_concept_member.hpp \
+	asio/traits/require_free.hpp \
+	asio/traits/require_member.hpp \
+	asio/traits/static_query.hpp \
+	asio/traits/static_require.hpp \
+	asio/traits/static_require_concept.hpp \
 	asio/ts/buffer.hpp \
 	asio/ts/executor.hpp \
 	asio/ts/internet.hpp \
