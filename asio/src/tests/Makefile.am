@@ -43,6 +43,7 @@ check_PROGRAMS = \
 	unit/detached \
 	unit/dispatch \
 	unit/error \
+	unit/execution/execute \
 	unit/execution_context \
 	unit/executor \
 	unit/executor_work_guard \
@@ -183,6 +184,7 @@ TESTS = \
 	unit/detached \
 	unit/dispatch \
 	unit/error \
+	unit/execution/execute \
 	unit/execution_context \
 	unit/executor \
 	unit/executor_work_guard \
@@ -323,6 +325,7 @@ unit_defer_SOURCES = unit/defer.cpp
 unit_detached_SOURCES = unit/detached.cpp
 unit_dispatch_SOURCES = unit/dispatch.cpp
 unit_error_SOURCES = unit/error.cpp
+unit_execution_execute_SOURCES = unit/execution/execute.cpp
 unit_execution_context_SOURCES = unit/execution_context.cpp
 unit_executor_SOURCES = unit/executor.cpp
 unit_executor_work_guard_SOURCES = unit/executor_work_guard.cpp
