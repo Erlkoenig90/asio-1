@@ -47,6 +47,7 @@ check_PROGRAMS = \
 	unit/execution/blocking \
 	unit/execution/execute \
 	unit/execution/invocable_archetype \
+	unit/execution/mapping \
 	unit/execution/outstanding_work \
 	unit/execution_context \
 	unit/executor \
@@ -192,6 +193,7 @@ TESTS = \
 	unit/execution/blocking \
 	unit/execution/execute \
 	unit/execution/invocable_archetype \
+	unit/execution/mapping \
 	unit/execution/outstanding_work \
 	unit/execution_context \
 	unit/executor \
@@ -337,6 +339,7 @@ unit_execution_any_executor_SOURCES = unit/execution/any_executor.cpp
 unit_execution_blocking_SOURCES = unit/execution/blocking.cpp
 unit_execution_execute_SOURCES = unit/execution/execute.cpp
 unit_execution_invocable_archetype_SOURCES = unit/execution/invocable_archetype.cpp
+unit_execution_mapping_SOURCES = unit/execution/mapping.cpp
 unit_execution_outstanding_work_SOURCES = unit/execution/outstanding_work.cpp
 unit_execution_context_SOURCES = unit/execution_context.cpp
 unit_executor_SOURCES = unit/executor.cpp

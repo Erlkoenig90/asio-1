@@ -11,4 +11,5 @@ any_executor
 blocking
 execute
 invocable_archetype
+mapping
 outstanding_work
