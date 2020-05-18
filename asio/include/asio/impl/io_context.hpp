@@ -228,32 +228,125 @@ io_context::wrap(Handler handler)
 
 #endif // !defined(ASIO_NO_DEPRECATED)
 
-inline io_context&
-io_context::executor_type::context() const ASIO_NOEXCEPT
+template <typename Blocking, typename Relationship,
+    typename OutstandingWork, typename Allocator>
+inline io_context::basic_executor_type<Blocking, Relationship,
+    OutstandingWork, Allocator>::basic_executor_type(
+    io_context& i) ASIO_NOEXCEPT
+  : io_context_(&i),
+    allocator_()
 {
-  return io_context_;
+  if (is_same<OutstandingWork, execution::outstanding_work_t::tracked_t>::value)
+    io_context_->impl_.work_started();
 }
 
-inline void
-io_context::executor_type::on_work_started() const ASIO_NOEXCEPT
+template <typename Blocking, typename Relationship,
+    typename OutstandingWork, typename Allocator>
+inline io_context::basic_executor_type<Blocking, Relationship,
+    OutstandingWork, Allocator>::basic_executor_type(
+    io_context* i, const Allocator& a) ASIO_NOEXCEPT
+  : io_context_(i),
+    allocator_(a)
 {
-  io_context_.impl_.work_started();
+  if (is_same<OutstandingWork, execution::outstanding_work_t::tracked_t>::value)
+    io_context_->impl_.work_started();
 }
 
-inline void
-io_context::executor_type::on_work_finished() const ASIO_NOEXCEPT
+template <typename Blocking, typename Relationship,
+    typename OutstandingWork, typename Allocator>
+inline io_context::basic_executor_type<Blocking, Relationship,
+    OutstandingWork, Allocator>::basic_executor_type(
+    const basic_executor_type& other) ASIO_NOEXCEPT
+  : io_context_(other.io_context_),
+    allocator_(other.allocator_)
 {
-  io_context_.impl_.work_finished();
+  if (is_same<OutstandingWork, execution::outstanding_work_t::tracked_t>::value)
+    io_context_->impl_.work_started();
 }
 
-template <typename Function, typename Allocator>
-void io_context::executor_type::dispatch(
-    ASIO_MOVE_ARG(Function) f, const Allocator& a) const
+#if defined(ASIO_HAS_MOVE)
+template <typename Blocking, typename Relationship,
+    typename OutstandingWork, typename Allocator>
+inline io_context::basic_executor_type<Blocking, Relationship,
+    OutstandingWork, Allocator>::basic_executor_type(
+    basic_executor_type&& other) ASIO_NOEXCEPT
+  : io_context_(other.io_context_),
+    allocator_(ASIO_MOVE_CAST(Allocator)(other.allocator_))
+{
+  if (is_same<OutstandingWork, execution::outstanding_work_t::tracked_t>::value)
+    io_context_->impl_.work_started();
+}
+#endif // defined(ASIO_HAS_MOVE)
+
+template <typename Blocking, typename Relationship,
+    typename OutstandingWork, typename Allocator>
+inline io_context::basic_executor_type<Blocking, Relationship,
+    OutstandingWork, Allocator>::~basic_executor_type()
+{
+  if (is_same<OutstandingWork, execution::outstanding_work_t::tracked_t>::value)
+    io_context_->impl_.work_finished();
+}
+
+template <typename Blocking, typename Relationship,
+    typename OutstandingWork, typename Allocator>
+io_context::basic_executor_type<Blocking,
+    Relationship, OutstandingWork, Allocator>&
+io_context::basic_executor_type<Blocking, Relationship, OutstandingWork,
+    Allocator>::operator=(const basic_executor_type& other) ASIO_NOEXCEPT
+{
+  io_context* old_io_context = io_context_;
+  io_context_ = other.io_context_;
+  allocator_ = other.allocator_;
+  if (is_same<OutstandingWork, execution::outstanding_work_t::tracked_t>::value)
+  {
+    io_context_->impl_.work_started();
+    old_io_context->impl_.work_finished();
+  }
+  return *this;
+}
+
+#if defined(ASIO_HAS_MOVE)
+template <typename Blocking, typename Relationship,
+    typename OutstandingWork, typename Allocator>
+io_context::basic_executor_type<Blocking,
+    Relationship, OutstandingWork, Allocator>&
+io_context::basic_executor_type<Blocking, Relationship, OutstandingWork,
+    Allocator>::operator=(basic_executor_type&& other) ASIO_NOEXCEPT
+{
+  io_context* old_io_context = io_context_;
+  io_context_ = other.io_context_;
+  allocator_ = std::move(other.allocator_);
+  if (is_same<OutstandingWork, execution::outstanding_work_t::tracked_t>::value)
+  {
+    io_context_->impl_.work_started();
+    old_io_context->impl_.work_finished();
+  }
+  return *this;
+}
+#endif // defined(ASIO_HAS_MOVE)
+
+template <typename Blocking, typename Relationship,
+    typename OutstandingWork, typename Allocator>
+inline bool io_context::basic_executor_type<
+    Blocking, Relationship, OutstandingWork,
+    Allocator>::running_in_this_thread() const ASIO_NOEXCEPT
+{
+  return io_context_->impl_.can_dispatch();
+}
+
+template <typename Blocking, typename Relationship,
+    typename OutstandingWork, typename Allocator>
+template <typename Function>
+void io_context::basic_executor_type<
+    Blocking, Relationship, OutstandingWork,
+    Allocator>::execute(ASIO_MOVE_ARG(Function) f) const
 {
   typedef typename decay<Function>::type function_type;
 
-  // Invoke immediately if we are already inside the thread pool.
-  if (io_context_.impl_.can_dispatch())
+  // Invoke immediately if the blocking.possibly property is enabled and we are
+  // already inside the thread pool.
+  if (is_same<Blocking, execution::blocking_t::possibly_t>::value
+      && io_context_->impl_.can_dispatch())
   {
     // Make a local, non-const copy of the function.
     function_type tmp(ASIO_MOVE_CAST(Function)(f));
@@ -265,57 +358,123 @@ void io_context::executor_type::dispatch(
 
   // Allocate and construct an operation to wrap the function.
   typedef detail::executor_op<function_type, Allocator, detail::operation> op;
-  typename op::ptr p = { detail::addressof(a), op::ptr::allocate(a), 0 };
-  p.p = new (p.v) op(ASIO_MOVE_CAST(Function)(f), a);
+  typename op::ptr p = { detail::addressof(allocator_),
+      op::ptr::allocate(allocator_), 0 };
+  p.p = new (p.v) op(ASIO_MOVE_CAST(Function)(f), allocator_);
 
-  ASIO_HANDLER_CREATION((this->context(), *p.p,
-        "io_context", &this->context(), 0, "dispatch"));
+  ASIO_HANDLER_CREATION((*io_context_, *p.p,
+        "io_context", io_context_, 0, "execute"));
 
-  io_context_.impl_.post_immediate_completion(p.p, false);
+  io_context_->impl_.post_immediate_completion(p.p,
+      is_same<Relationship, execution::relationship_t::continuation_t>::value);
   p.v = p.p = 0;
 }
 
-template <typename Function, typename Allocator>
-void io_context::executor_type::post(
-    ASIO_MOVE_ARG(Function) f, const Allocator& a) const
+#if !defined(ASIO_STANDARD_EXECUTORS_ONLY)
+template <typename Blocking, typename Relationship,
+    typename OutstandingWork, typename Allocator>
+inline io_context& io_context::basic_executor_type<
+    Blocking, Relationship, OutstandingWork,
+    Allocator>::context() const ASIO_NOEXCEPT
+{
+  return *io_context_;
+}
+
+template <typename Blocking, typename Relationship,
+    typename OutstandingWork, typename Allocator>
+inline void io_context::basic_executor_type<
+    Blocking, Relationship, OutstandingWork,
+    Allocator>::on_work_started() const ASIO_NOEXCEPT
+{
+  io_context_->impl_.work_started();
+}
+
+template <typename Blocking, typename Relationship,
+    typename OutstandingWork, typename Allocator>
+inline void io_context::basic_executor_type<
+    Blocking, Relationship, OutstandingWork,
+    Allocator>::on_work_finished() const ASIO_NOEXCEPT
+{
+  io_context_->impl_.work_finished();
+}
+
+template <typename Blocking, typename Relationship,
+    typename OutstandingWork, typename Allocator>
+template <typename Function, typename OtherAllocator>
+void io_context::basic_executor_type<
+    Blocking, Relationship, OutstandingWork, Allocator>::dispatch(
+    ASIO_MOVE_ARG(Function) f, const OtherAllocator& a) const
+{
+  typedef typename decay<Function>::type function_type;
+
+  // Invoke immediately if we are already inside the thread pool.
+  if (io_context_->impl_.can_dispatch())
+  {
+    // Make a local, non-const copy of the function.
+    function_type tmp(ASIO_MOVE_CAST(Function)(f));
+
+    detail::fenced_block b(detail::fenced_block::full);
+    asio_handler_invoke_helpers::invoke(tmp, tmp);
+    return;
+  }
+
+  // Allocate and construct an operation to wrap the function.
+  typedef detail::executor_op<function_type,
+      OtherAllocator, detail::operation> op;
+  typename op::ptr p = { detail::addressof(a), op::ptr::allocate(a), 0 };
+  p.p = new (p.v) op(ASIO_MOVE_CAST(Function)(f), a);
+
+  ASIO_HANDLER_CREATION((*io_context_, *p.p,
+        "io_context", io_context_, 0, "dispatch"));
+
+  io_context_->impl_.post_immediate_completion(p.p, false);
+  p.v = p.p = 0;
+}
+
+template <typename Blocking, typename Relationship,
+    typename OutstandingWork, typename Allocator>
+template <typename Function, typename OtherAllocator>
+void io_context::basic_executor_type<
+    Blocking, Relationship, OutstandingWork, Allocator>::post(
+    ASIO_MOVE_ARG(Function) f, const OtherAllocator& a) const
 {
   typedef typename decay<Function>::type function_type;
 
   // Allocate and construct an operation to wrap the function.
-  typedef detail::executor_op<function_type, Allocator, detail::operation> op;
+  typedef detail::executor_op<function_type,
+      OtherAllocator, detail::operation> op;
   typename op::ptr p = { detail::addressof(a), op::ptr::allocate(a), 0 };
   p.p = new (p.v) op(ASIO_MOVE_CAST(Function)(f), a);
 
-  ASIO_HANDLER_CREATION((this->context(), *p.p,
-        "io_context", &this->context(), 0, "post"));
+  ASIO_HANDLER_CREATION((*io_context_, *p.p,
+        "io_context", io_context_, 0, "post"));
 
-  io_context_.impl_.post_immediate_completion(p.p, false);
+  io_context_->impl_.post_immediate_completion(p.p, false);
   p.v = p.p = 0;
 }
 
-template <typename Function, typename Allocator>
-void io_context::executor_type::defer(
-    ASIO_MOVE_ARG(Function) f, const Allocator& a) const
+template <typename Blocking, typename Relationship,
+    typename OutstandingWork, typename Allocator>
+template <typename Function, typename OtherAllocator>
+void io_context::basic_executor_type<
+    Blocking, Relationship, OutstandingWork, Allocator>::defer(
+    ASIO_MOVE_ARG(Function) f, const OtherAllocator& a) const
 {
   typedef typename decay<Function>::type function_type;
 
   // Allocate and construct an operation to wrap the function.
-  typedef detail::executor_op<function_type, Allocator, detail::operation> op;
+  typedef detail::executor_op<function_type,
+      OtherAllocator, detail::operation> op;
   typename op::ptr p = { detail::addressof(a), op::ptr::allocate(a), 0 };
   p.p = new (p.v) op(ASIO_MOVE_CAST(Function)(f), a);
 
-  ASIO_HANDLER_CREATION((this->context(), *p.p,
-        "io_context", &this->context(), 0, "defer"));
+  ASIO_HANDLER_CREATION((*io_context_, *p.p,
+        "io_context", io_context_, 0, "defer"));
 
-  io_context_.impl_.post_immediate_completion(p.p, true);
+  io_context_->impl_.post_immediate_completion(p.p, true);
   p.v = p.p = 0;
 }
-
-inline bool
-io_context::executor_type::running_in_this_thread() const ASIO_NOEXCEPT
-{
-  return io_context_.impl_.can_dispatch();
-}
+#endif // !defined(ASIO_STANDARD_EXECUTORS_ONLY)
 
 #if !defined(ASIO_NO_DEPRECATED)
 inline io_context::work::work(asio::io_context& io_context)
