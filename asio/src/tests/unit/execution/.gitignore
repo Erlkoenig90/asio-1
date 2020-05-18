@@ -10,6 +10,7 @@
 any_executor
 blocking
 blocking_adaptation
+bulk_guarantee
 execute
 invocable_archetype
 mapping
