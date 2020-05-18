@@ -45,6 +45,7 @@ check_PROGRAMS = \
 	unit/error \
 	unit/execution/any_executor \
 	unit/execution/blocking \
+	unit/execution/blocking_adaptation \
 	unit/execution/execute \
 	unit/execution/invocable_archetype \
 	unit/execution/mapping \
@@ -192,6 +193,7 @@ TESTS = \
 	unit/error \
 	unit/execution/any_executor \
 	unit/execution/blocking \
+	unit/execution/blocking_adaptation \
 	unit/execution/execute \
 	unit/execution/invocable_archetype \
 	unit/execution/mapping \
@@ -339,6 +341,7 @@ unit_dispatch_SOURCES = unit/dispatch.cpp
 unit_error_SOURCES = unit/error.cpp
 unit_execution_any_executor_SOURCES = unit/execution/any_executor.cpp
 unit_execution_blocking_SOURCES = unit/execution/blocking.cpp
+unit_execution_blocking_adaptation_SOURCES = unit/execution/blocking_adaptation.cpp
 unit_execution_execute_SOURCES = unit/execution/execute.cpp
 unit_execution_invocable_archetype_SOURCES = unit/execution/invocable_archetype.cpp
 unit_execution_mapping_SOURCES = unit/execution/mapping.cpp
