@@ -107,6 +107,7 @@ check_PROGRAMS = \
 	unit/serial_port_base \
 	unit/signal_set \
 	unit/socket_base \
+	unit/static_thread_pool \
 	unit/steady_timer \
 	unit/strand \
 	unit/streambuf \
@@ -115,6 +116,7 @@ check_PROGRAMS = \
 	unit/system_timer \
 	unit/this_coro \
 	unit/thread \
+	unit/thread_pool \
 	unit/time_traits \
 	unit/ts/buffer \
 	unit/ts/executor \
@@ -251,6 +253,7 @@ TESTS = \
 	unit/serial_port_base \
 	unit/signal_set \
 	unit/socket_base \
+	unit/static_thread_pool \
 	unit/steady_timer \
 	unit/strand \
 	unit/streambuf \
@@ -259,6 +262,7 @@ TESTS = \
 	unit/system_timer \
 	unit/this_coro \
 	unit/thread \
+	unit/thread_pool \
 	unit/time_traits \
 	unit/ts/buffer \
 	unit/ts/executor \
@@ -405,6 +409,7 @@ unit_serial_port_SOURCES = unit/serial_port.cpp
 unit_serial_port_base_SOURCES = unit/serial_port_base.cpp
 unit_signal_set_SOURCES = unit/signal_set.cpp
 unit_socket_base_SOURCES = unit/socket_base.cpp
+unit_static_thread_pool_SOURCES = unit/static_thread_pool.cpp
 unit_steady_timer_SOURCES = unit/steady_timer.cpp
 unit_strand_SOURCES = unit/strand.cpp
 unit_streambuf_SOURCES = unit/streambuf.cpp
@@ -413,6 +418,7 @@ unit_system_executor_SOURCES = unit/system_executor.cpp
 unit_system_timer_SOURCES = unit/system_timer.cpp
 unit_this_coro_SOURCES = unit/this_coro.cpp
 unit_thread_SOURCES = unit/thread.cpp
+unit_thread_pool_SOURCES = unit/thread_pool.cpp
 unit_time_traits_SOURCES = unit/time_traits.cpp
 unit_ts_buffer_SOURCES = unit/ts/buffer.cpp
 unit_ts_executor_SOURCES = unit/ts/executor.cpp

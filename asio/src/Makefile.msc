@@ -201,6 +201,7 @@ UNIT_TEST_EXES = \
 	tests\unit\serial_port_base.exe \
 	tests\unit\signal_set.exe \
 	tests\unit\socket_base.exe \
+	tests\unit\static_thread_pool.exe \
 	tests\unit\steady_timer.exe \
 	tests\unit\strand.exe \
 	tests\unit\streambuf.exe \
@@ -209,6 +210,7 @@ UNIT_TEST_EXES = \
 	tests\unit\system_timer.exe \
 	tests\unit\this_coro.exe \
 	tests\unit\thread.exe \
+	tests\unit\thread_pool.exe \
 	tests\unit\time_traits.exe \
 	tests\unit\ts\buffer.exe \
 	tests\unit\ts\executor.exe \

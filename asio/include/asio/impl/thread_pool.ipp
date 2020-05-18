@@ -33,19 +33,23 @@ struct thread_pool::thread_function
   }
 };
 
+#if !defined(ASIO_STANDARD_EXECUTORS_ONLY)
 thread_pool::thread_pool()
   : scheduler_(add_scheduler(new detail::scheduler(*this, 0, false)))
 {
   scheduler_.work_started();
 
   thread_function f = { &scheduler_ };
-  std::size_t num_threads = detail::thread::hardware_concurrency() * 2;
-  threads_.create_threads(f, num_threads ? num_threads : 2);
+  num_threads_ = detail::thread::hardware_concurrency() * 2;
+  num_threads_ = num_threads_ == 0 ? 2 : num_threads_;
+  threads_.create_threads(f, num_threads_);
 }
+#endif // !defined(ASIO_STANDARD_EXECUTORS_ONLY)
 
 thread_pool::thread_pool(std::size_t num_threads)
   : scheduler_(add_scheduler(new detail::scheduler(
-          *this, num_threads == 1 ? 1 : 0, false)))
+          *this, num_threads == 1 ? 1 : 0, false))),
+    num_threads_(num_threads)
 {
   scheduler_.work_started();
 
@@ -64,6 +68,12 @@ void thread_pool::stop()
   scheduler_.stop();
 }
 
+void thread_pool::attach()
+{
+  asio::error_code ec;
+  scheduler_.run(ec);
+}
+
 void thread_pool::join()
 {
   if (!threads_.empty())
@@ -78,6 +88,12 @@ detail::scheduler& thread_pool::add_scheduler(detail::scheduler* s)
   detail::scoped_ptr<detail::scheduler> scoped_impl(s);
   asio::add_service<detail::scheduler>(*this, scoped_impl.get());
   return *scoped_impl.release();
+}
+
+void thread_pool::wait()
+{
+  scheduler_.work_finished();
+  threads_.join();
 }
 
 } // namespace asio
