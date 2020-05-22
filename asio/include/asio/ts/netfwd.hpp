@@ -43,8 +43,17 @@ class system_executor;
 
 class executor;
 
+#if !defined(GENERATING_DOCUMENTATION)
+namespace strand_ { // Ensure friend 'prefer()' is not in asio namespace.
+#endif // !defined(GENERATING_DOCUMENTATION)
+
 template <typename Executor>
 class strand;
+
+#if !defined(GENERATING_DOCUMENTATION)
+} // namespace strand_
+using strand_::strand;
+#endif // !defined(GENERATING_DOCUMENTATION)
 
 class io_context;
 
