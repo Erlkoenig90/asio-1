@@ -1,4 +1,6 @@
-#include <asio/ts/executor.hpp>
+#include <asio/execution.hpp>
+#include <asio/static_thread_pool.hpp>
+#include <asio/strand.hpp>
 #include <condition_variable>
 #include <deque>
 #include <memory>
@@ -6,11 +8,9 @@
 #include <typeinfo>
 #include <vector>
 
-using asio::defer;
-using asio::executor;
-using asio::post;
+using asio::static_thread_pool;
 using asio::strand;
-using asio::system_executor;
+namespace execution = asio::execution;
 
 //------------------------------------------------------------------------------
 // A tiny actor framework
@@ -93,17 +93,18 @@ public:
   friend void send(Message msg, actor_address from, actor_address to)
   {
     // Execute the message handler in the context of the target's executor.
-    post(to->executor_,
-      [=, msg=std::move(msg)]
-      {
-        to->call_handler(std::move(msg), from);
-      });
+    execution::execute(
+        asio::require(to->executor_, execution::blocking.never),
+        [=, msg=std::move(msg)]() mutable
+        {
+          to->call_handler(std::move(msg), from);
+        });
   }
 
 protected:
-  // Construct the actor to use the specified executor for all message handlers.
-  actor(executor e)
-    : executor_(std::move(e))
+  // Construct the actor to use the specified pool for all message handlers.
+  actor(static_thread_pool& tp)
+    : executor_(tp.executor())
   {
   }
 
@@ -140,11 +141,14 @@ protected:
   void tail_send(Message msg, actor_address to)
   {
     // Execute the message handler in the context of the target's executor.
-    defer(to->executor_,
-      [=, msg=std::move(msg), from=this]
-      {
-        to->call_handler(std::move(msg), from);
-      });
+    execution::execute(
+        asio::prefer(
+          asio::require(to->executor_, execution::blocking.never),
+          execution::relationship.continuation),
+        [=, msg=std::move(msg), from=this]() mutable
+        {
+          to->call_handler(std::move(msg), from);
+        });
   }
 
 private:
@@ -165,8 +169,9 @@ private:
 
   // All messages associated with a single actor object should be processed
   // non-concurrently. We use a strand to ensure non-concurrent execution even
-  // if the underlying executor may use multiple threads.
-  strand<executor> executor_;
+  // if the underlying static thread pool may be constructed to use multiple
+  // threads.
+  strand<static_thread_pool::executor_type> executor_;
 
   std::vector<std::shared_ptr<message_handler_base>> handlers_;
 };
@@ -176,8 +181,8 @@ template <class Message>
 class receiver : public actor
 {
 public:
-  receiver()
-    : actor(system_executor())
+  receiver(static_thread_pool& tp)
+    : actor(tp)
   {
     register_handler(&receiver::message_handler);
   }
@@ -207,17 +212,16 @@ private:
 };
 
 //------------------------------------------------------------------------------
+// An example using the actor framework
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-#include <asio/thread_pool.hpp>
 #include <iostream>
-
-using asio::thread_pool;
 
 class member : public actor
 {
 public:
-  explicit member(executor e)
-    : actor(std::move(e))
+  explicit member(static_thread_pool& tp)
+    : actor(tp)
   {
     register_handler(&member::init_handler);
   }
@@ -258,14 +262,16 @@ int main()
   const int token_value = (num_hops + num_actors - 1) / num_actors;
   const std::size_t actors_per_thread = num_actors / num_threads;
 
-  struct single_thread_pool : thread_pool { single_thread_pool() : thread_pool(1) {} };
+  struct single_thread_pool : static_thread_pool { single_thread_pool() : static_thread_pool(1) {} };
   single_thread_pool pools[num_threads];
   std::vector<std::shared_ptr<member>> members(num_actors);
-  receiver<int> rcvr;
+
+  static_thread_pool rcvr_pool(1);
+  receiver<int> rcvr(rcvr_pool);
 
   // Create the member actors.
   for (std::size_t i = 0; i < num_actors; ++i)
-    members[i] = std::make_shared<member>(pools[(i / actors_per_thread) % num_threads].get_executor());
+    members[i] = std::make_shared<member>(pools[(i / actors_per_thread) % num_threads]);
 
   // Initialise the actors by passing each one the address of the next actor in the ring.
   for (std::size_t i = num_actors, next_i = 0; i > 0; next_i = --i)
