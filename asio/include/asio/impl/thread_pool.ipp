@@ -28,8 +28,19 @@ struct thread_pool::thread_function
 
   void operator()()
   {
-    asio::error_code ec;
-    scheduler_->run(ec);
+#if !defined(ASIO_NO_EXCEPTIONS)
+    try
+    {
+#endif// !defined(ASIO_NO_EXCEPTIONS)
+      asio::error_code ec;
+      scheduler_->run(ec);
+    }
+#if !defined(ASIO_NO_EXCEPTIONS)
+    catch (...)
+    {
+      std::terminate();
+    }
+#endif// !defined(ASIO_NO_EXCEPTIONS)
   }
 };
 
@@ -70,8 +81,8 @@ void thread_pool::stop()
 
 void thread_pool::attach()
 {
-  asio::error_code ec;
-  scheduler_.run(ec);
+  thread_function f = { &scheduler_ };
+  f();
 }
 
 void thread_pool::join()
