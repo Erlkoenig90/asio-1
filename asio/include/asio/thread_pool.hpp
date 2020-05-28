@@ -16,6 +16,7 @@
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
 #include "asio/detail/config.hpp"
+#include "asio/detail/atomic_count.hpp"
 #include "asio/detail/noncopyable.hpp"
 #include "asio/detail/scheduler.hpp"
 #include "asio/detail/thread_group.hpp"
@@ -138,8 +139,8 @@ private:
   // The threads in the pool.
   detail::thread_group threads_;
 
-  // The number of threads in the pool at construction.
-  std::size_t num_threads_;
+  // The current number of threads in the pool.
+  detail::atomic_count num_threads_;
 };
 
 template <typename Blocking, typename Relationship,
@@ -313,7 +314,7 @@ public:
   /// Query the occupancy (recommended number of work items) for the pool.
   std::size_t query(execution::occupancy_t) const ASIO_NOEXCEPT
   {
-    return (pool_->num_threads_ < 1 ? 1 : pool_->num_threads_) * 2;
+    return static_cast<std::size_t>(pool_->num_threads_);
   }
 
   /// Determine whether the thread pool is running in the current thread.

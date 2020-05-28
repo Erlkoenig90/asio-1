@@ -219,7 +219,7 @@ void thread_pool_executor_query_test()
   ASIO_CHECK(
       asio::query(pool.executor(),
         asio::execution::occupancy)
-      == 2);
+      == 1);
 }
 
 void thread_pool_executor_execute_test()

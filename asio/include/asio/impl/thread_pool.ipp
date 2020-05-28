@@ -16,7 +16,9 @@
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
 #include "asio/detail/config.hpp"
+#include <stdexcept>
 #include "asio/thread_pool.hpp"
+#include "asio/detail/throw_exception.hpp"
 
 #include "asio/detail/push_options.hpp"
 
@@ -45,27 +47,51 @@ struct thread_pool::thread_function
 };
 
 #if !defined(ASIO_STANDARD_EXECUTORS_ONLY)
+namespace detail {
+
+inline long default_thread_pool_size()
+{
+  std::size_t num_threads = thread::hardware_concurrency() * 2;
+  num_threads = num_threads == 0 ? 2 : num_threads;
+  return num_threads;
+}
+
+} // namespace detail
+
 thread_pool::thread_pool()
-  : scheduler_(add_scheduler(new detail::scheduler(*this, 0, false)))
+  : scheduler_(add_scheduler(new detail::scheduler(*this, 0, false))),
+    num_threads_(detail::default_thread_pool_size())
 {
   scheduler_.work_started();
 
   thread_function f = { &scheduler_ };
-  num_threads_ = detail::thread::hardware_concurrency() * 2;
-  num_threads_ = num_threads_ == 0 ? 2 : num_threads_;
-  threads_.create_threads(f, num_threads_);
+  threads_.create_threads(f, static_cast<std::size_t>(num_threads_));
 }
 #endif // !defined(ASIO_STANDARD_EXECUTORS_ONLY)
+
+namespace detail {
+
+inline long clamp_thread_pool_size(std::size_t n)
+{
+  if (n > 0x7FFFFFFF)
+  {
+    std::out_of_range ex("thread pool size");
+    asio::detail::throw_exception(ex);
+  }
+  return static_cast<long>(n & 0x7FFFFFFF);
+}
+
+} // namespace detail
 
 thread_pool::thread_pool(std::size_t num_threads)
   : scheduler_(add_scheduler(new detail::scheduler(
           *this, num_threads == 1 ? 1 : 0, false))),
-    num_threads_(num_threads)
+    num_threads_(detail::clamp_thread_pool_size(num_threads))
 {
   scheduler_.work_started();
 
   thread_function f = { &scheduler_ };
-  threads_.create_threads(f, num_threads);
+  threads_.create_threads(f, static_cast<std::size_t>(num_threads_));
 }
 
 thread_pool::~thread_pool()
@@ -81,6 +107,7 @@ void thread_pool::stop()
 
 void thread_pool::attach()
 {
+  ++num_threads_;
   thread_function f = { &scheduler_ };
   f();
 }
